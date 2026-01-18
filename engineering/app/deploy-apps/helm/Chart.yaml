@@ -1,0 +1,12 @@
+---
+apiVersion: v2
+name: deploy-apps
+description: A Helm chart for deploying apps to DEV and PROD.
+
+maintainers:
+  - name: darshanasys
+    email: darshana.m@nglt.tech
+
+type: application
+
+version: 0.1.0

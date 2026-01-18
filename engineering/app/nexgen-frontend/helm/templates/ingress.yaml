@@ -1,0 +1,32 @@
+---
+{{- $environment := printf "%s" .Values.global.environment -}}
+{{- $fullAppName := printf "%s-%s" .Values.appName $environment -}}
+{{- $host := "" }}
+{{- if eq $environment "prod" }}
+{{- $host = printf "%s" "infrajet.dev" -}}
+{{- else }}
+{{- $host = printf "%s-%s.infrajet.dev" .Values.hostname $environment -}}
+{{- end }}
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    link.argocd.argoproj.io/external-link: https://{{ $host }}
+  name: {{ printf "ing-%s" $fullAppName }}
+  labels:
+    app: {{ printf "%s" .Values.appName }}
+    environment: {{ $environment }}
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: {{ $host }}
+    http:
+      paths:
+      - backend:
+          service:
+            name: {{ printf "service-%s" $fullAppName }}
+            port:
+              number: 8080
+        path: /
+        pathType: ImplementationSpecific

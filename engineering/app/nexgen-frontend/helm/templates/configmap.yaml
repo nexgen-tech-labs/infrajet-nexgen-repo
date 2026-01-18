@@ -1,0 +1,13 @@
+---
+{{ $environment := printf "%s" .Values.global.environment -}}
+{{- $fullAppName := printf "%s-%s" .Values.appName $environment -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "cm-%s" $fullAppName }}
+  labels:
+    app: {{ printf "%s" .Values.appName }}
+    environment: {{ $environment }}
+data:
+  config.json: |
+{{ .Values.deploy.config | indent 4 }}

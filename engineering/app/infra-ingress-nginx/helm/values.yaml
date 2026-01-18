@@ -1,0 +1,12 @@
+---
+ingress-nginx:
+  controller:
+    allowSnippetAnnotations: true
+    nodeSelector:
+      name: userpool
+    replicaCount: 2
+    service:
+      annotations:
+        service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path: /healthz
+        service.beta.kubernetes.io/port_443_health-probe_protocol: tcp
+        service.beta.kubernetes.io/port_80_health-probe_protocol: tcp

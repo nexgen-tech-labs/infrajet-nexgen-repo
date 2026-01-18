@@ -1,0 +1,14 @@
+# Core dependencies (available on PyPI)
+python-hcl2>=4.0.0
+pyyaml>=6.0
+tree-sitter>=0.20.0
+
+# Optional: Alternative parsers
+lark>=1.1.0
+
+# FastAPI dependencies (should already be installed)
+fastapi>=0.100.0
+pydantic>=2.0.0
+
+# Note: tree-sitter language bindings (tree-sitter-hcl, tree-sitter-terraform)
+# need to be built from source. See README for instructions.

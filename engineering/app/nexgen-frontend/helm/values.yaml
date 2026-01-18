@@ -1,0 +1,6 @@
+---
+global:
+  appVersion: 0.1.1
+  environment: dev
+  registry: acrnexgen.azurecr.io/acrnexgen
+  replicas: 1

@@ -1,0 +1,95 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bump-minor-pre-major": true,
+  "changelog-sections": [
+    {
+      "type": "chore",
+      "section": "Chores"
+    },
+    {
+      "type": "feat",
+      "section": "Features"
+    },
+    {
+      "type": "fix",
+      "section": "Bug Fixes"
+    },
+    {
+      "type": "release",
+      "section": "Releases"
+    },
+    {
+      "type": "revert",
+      "section": "Revert Changes"
+    }
+  ],
+  "include-component-in-tag": true,
+  "packages": {
+    "backend": {
+      "release-type": "python",
+      "pull-request-title-pattern": "chore(backend): release ${version}",
+      "extra-files": [
+        "pyproject.toml"
+      ]
+    },
+    "engineering/app/infra-cd/helm": {
+      "release-type": "helm",
+      "extra-files": [
+        {
+          "jsonpath": "$.spec.source.targetRevision",
+          "path": "engineering/app/deploy-apps/helm/templates/infra-cd.yaml",
+          "type": "yaml"
+        }
+      ]
+    },
+    "engineering/app/infra-eso/helm": {
+      "release-type": "helm",
+      "extra-files": [
+        {
+          "jsonpath": "$.spec.source.targetRevision",
+          "path": "engineering/app/deploy-apps/helm/templates/infra-eso.yaml",
+          "type": "yaml"
+        }
+      ]
+    },
+    "engineering/app/infra-ingress-nginx/helm": {
+      "release-type": "helm",
+      "extra-files": [
+        {
+          "jsonpath": "$.spec.source.targetRevision",
+          "path": "engineering/app/deploy-apps/helm/templates/infra-ingress-nginx.yaml",
+          "type": "yaml"
+        }
+      ]
+    },
+    "engineering/app/nexgen-backend/helm": {
+      "release-type": "helm",
+      "extra-files": [
+        {
+          "jsonpath": "$.spec.source.targetRevision",
+          "path": "engineering/app/deploy-apps/helm/templates/nexgen-backend-dev.yaml",
+          "type": "yaml"
+        }
+      ]
+    },
+    "engineering/app/nexgen-frontend/helm": {
+      "release-type": "helm",
+      "extra-files": [
+        {
+          "jsonpath": "$.spec.source.targetRevision",
+          "path": "engineering/app/deploy-apps/helm/templates/nexgen-frontend-dev.yaml",
+          "type": "yaml"
+        }
+      ]
+    },
+    "frontend": {
+      "release-type": "node",
+      "pull-request-title-pattern": "chore(frontend): release ${version}"
+    }
+  },
+  "prerelease": false,
+  "pull-request-title-pattern": "chore(deps): release Helm chart${component} version ${version}",
+  "release-type": "helm",
+  "separate-pull-requests": true,
+  "sequential-calls": true
+}

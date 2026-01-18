@@ -1,0 +1,53 @@
+---
+{{- $environment := printf "%s" .Values.global.environment -}}
+{{- $fullAppName := printf "%s-%s" .Values.appName $environment -}}
+{{- $replicas := int (toString (.Values.global.replicas)) }}
+{{- $image := printf "%s/%s:v%s" .Values.global.registry  "nexgen-app" .Values.global.appVersion }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ printf "%s" .Values.appName }}
+    environment: {{ $environment }}
+  name: {{ printf "pod-%s" $fullAppName }}
+spec:
+  replicas: {{ $replicas }}
+  selector:
+    matchLabels:
+      app: {{ printf "%s" .Values.appName }}
+      environment: {{ $environment }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ printf "%s" .Values.appName }}
+        environment: {{ $environment }}
+    spec:
+      containers:
+      - name: {{ printf "pod-%s" $fullAppName }}
+        env:
+        - name: FRONTEND_URL
+          value: {{ default "http://localhost:8080" .Values.FRONTEND_URL | quote }}
+        - name: GITHUB_PRIVATE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: github-pvt-key-{{ $environment }}
+              key: GITHUB_PRIVATE_KEY
+        envFrom:
+        - configMapRef:
+            name: {{ printf "cm-%s" $fullAppName }}
+        - secretRef:
+            name: {{ printf "secret-%s" $fullAppName }}
+        image: {{ $image }}
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: 200m
+            memory: 500Mi
+      nodeSelector:
+        name: userpool

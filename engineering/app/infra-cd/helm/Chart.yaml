@@ -1,0 +1,16 @@
+apiVersion: v2
+name: infra-cd
+description: Install Argo CD.
+
+maintainers:
+  - name: darshanasys
+    email: darshana.m@ngtl.tech
+
+type: application
+
+version: 0.1.4
+
+dependencies:
+  - name: argo-cd
+    version: 8.6.1
+    repository: https://argoproj.github.io/argo-helm

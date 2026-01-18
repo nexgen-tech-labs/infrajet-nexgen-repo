@@ -1,0 +1,208 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* UX Laws Design System - Optimized for usability and aesthetics */
+
+@layer base {
+  :root {
+    /* 8px Grid System for consistent spacing */
+    --space-1: 0.25rem; /* 4px */
+    --space-2: 0.5rem;  /* 8px */
+    --space-3: 0.75rem; /* 12px */
+    --space-4: 1rem;    /* 16px */
+    --space-6: 1.5rem;  /* 24px */
+    --space-8: 2rem;    /* 32px */
+    --space-12: 3rem;   /* 48px */
+    --space-16: 4rem;   /* 64px */
+
+    /* Fitts' Law - Minimum 44px touch targets */
+    --touch-target: 2.75rem; /* 44px */
+    --touch-target-lg: 3rem; /* 48px */
+
+    /* Typography Scale */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 1.875rem;
+    --text-4xl: 2.25rem;
+
+    /* Enhanced Color System - Better contrast ratios */
+    --background: 220 25% 98%;
+    --background-secondary: 220 20% 95%;
+    --background-gradient: linear-gradient(135deg, hsl(240 100% 99%), hsl(220 25% 98%));
+    --foreground: 240 20% 12%;
+    --foreground-secondary: 240 15% 35%;
+
+    /* Card system with better elevation */
+    --card: 0 0% 100%;
+    --card-foreground: 240 20% 12%;
+    --card-hover: 220 20% 98%;
+    --card-border: 240 15% 90%;
+
+    /* Primary - High contrast for accessibility */
+    --primary: 260 100% 60%;
+    --primary-hover: 260 100% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-muted: 260 60% 95%;
+
+    /* Secondary - Better contrast */
+    --secondary: 240 10% 94%;
+    --secondary-hover: 240 10% 90%;
+    --secondary-foreground: 240 20% 12%;
+
+    /* Accent - Complementary to primary */
+    --accent: 200 95% 60%;
+    --accent-hover: 200 95% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Status colors with proper contrast */
+    --success: 140 70% 50%;
+    --success-foreground: 0 0% 100%;
+    --warning: 45 90% 60%;
+    --warning-foreground: 45 100% 15%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Form elements */
+    --input: 240 15% 96%;
+    --input-border: 240 15% 85%;
+    --input-focus: 260 100% 60%;
+
+    /* Interactive states */
+    --border: 240 15% 88%;
+    --border-hover: 240 15% 80%;
+    --ring: 260 100% 60%;
+
+    /* Muted elements */
+    --muted: 240 8% 92%;
+    --muted-foreground: 240 8% 50%;
+
+    /* Shadows - Layered elevation */
+    --shadow-xs: 0 1px 2px 0 hsl(240 20% 15% / 0.05);
+    --shadow-sm: 0 1px 3px 0 hsl(240 20% 15% / 0.1), 0 1px 2px -1px hsl(240 20% 15% / 0.1);
+    --shadow-md: 0 4px 6px -1px hsl(240 20% 15% / 0.1), 0 2px 4px -2px hsl(240 20% 15% / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(240 20% 15% / 0.1), 0 4px 6px -4px hsl(240 20% 15% / 0.1);
+    --shadow-xl: 0 20px 25px -5px hsl(240 20% 15% / 0.1), 0 8px 10px -6px hsl(240 20% 15% / 0.1);
+
+    /* Transitions - Smooth animations */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Border radius - Consistent rounding */
+    --radius-sm: 0.5rem;
+    --radius: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+  }
+
+  .dark {
+    /* Dark mode gradient backgrounds */
+    --background: 240 15% 8%;
+    --background-gradient: linear-gradient(135deg, hsl(240 20% 6%), hsl(250 15% 10%));
+    --foreground: 240 20% 95%;
+
+    /* Dark card styling */
+    --card: 240 20% 10%;
+    --card-foreground: 240 20% 95%;
+    --card-gradient: linear-gradient(145deg, hsl(240 20% 10%), hsl(250 15% 12%));
+
+    /* Dark popover */
+    --popover: 240 20% 10%;
+    --popover-foreground: 240 20% 95%;
+
+    /* Bright primary for dark mode */
+    --primary: 270 100% 75%;
+    --primary-glow: 280 100% 85%;
+    --primary-foreground: 240 15% 8%;
+    --primary-gradient: linear-gradient(135deg, hsl(270 100% 75%), hsl(290 95% 80%));
+
+    /* Dark secondary */
+    --secondary: 240 15% 18%;
+    --secondary-foreground: 240 20% 95%;
+    --secondary-gradient: linear-gradient(135deg, hsl(240 15% 18%), hsl(250 20% 22%));
+
+    /* Dark muted */
+    --muted: 240 15% 15%;
+    --muted-foreground: 240 10% 65%;
+
+    /* Bright accent for dark mode */
+    --accent: 300 90% 80%;
+    --accent-foreground: 240 15% 8%;
+    --accent-gradient: linear-gradient(135deg, hsl(300 90% 80%), hsl(320 85% 85%));
+
+    /* Dark error states */
+    --destructive: 0 80% 65%;
+    --destructive-foreground: 240 15% 8%;
+
+    /* Dark borders and inputs */
+    --border: 240 15% 20%;
+    --input: 240 15% 18%;
+    --ring: 270 100% 75%;
+
+    /* Dark sidebar */
+    --sidebar-background: 240 20% 8%;
+    --sidebar-foreground: 240 20% 90%;
+    --sidebar-primary: 270 100% 75%;
+    --sidebar-primary-foreground: 240 15% 8%;
+    --sidebar-accent: 240 15% 15%;
+    --sidebar-accent-foreground: 240 20% 90%;
+    --sidebar-border: 240 15% 18%;
+    --sidebar-ring: 270 100% 75%;
+
+    /* Dark shadows with glow */
+    --shadow-soft: 0 4px 6px -1px hsl(240 20% 0% / 0.3), 0 2px 4px -1px hsl(240 20% 0% / 0.2);
+    --shadow-medium: 0 10px 15px -3px hsl(240 20% 0% / 0.4), 0 4px 6px -2px hsl(240 20% 0% / 0.3);
+    --shadow-large: 0 25px 50px -12px hsl(240 20% 0% / 0.5);
+    --shadow-glow: 0 0 30px hsl(270 100% 75% / 0.4);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background: hsl(var(--background));
+    background-image: var(--background-gradient);
+    background-attachment: fixed;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Aesthetic-Usability Effect - Improve perceived usability */
+  .glass-effect {
+    background: hsl(var(--card) / 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  /* Fitts' Law - Proper touch targets */
+  .touch-target {
+    min-height: var(--touch-target);
+    min-width: var(--touch-target);
+  }
+
+  /* Focus indicators for accessibility */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+
+  /* Smooth animations */
+  .animate-smooth {
+    transition: all var(--transition-normal);
+  }
+
+  /* Gestalt - Visual grouping */
+  .card-group {
+    @apply space-y-4 p-6 rounded-xl;
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--card-border));
+    box-shadow: var(--shadow-sm);
+  }
+}

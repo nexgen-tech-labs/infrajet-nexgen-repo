@@ -1,0 +1,48 @@
+---
+{{- $environment := printf "%s" .Values.global.environment -}}
+{{- $fullAppName := printf "%s-%s" .Values.appName $environment -}}
+{{- $replicas := int (toString (.Values.global.replicas)) }}
+{{- $image := printf "%s/%s:v%s" .Values.global.registry  "nexgen-ui" .Values.global.appVersion }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ printf "%s" .Values.appName }}
+    environment: {{ $environment }}
+  name: {{ printf "pod-%s" $fullAppName }}
+spec:
+  replicas: {{ $replicas }}
+  selector:
+    matchLabels:
+      app: {{ printf "%s" .Values.appName }}
+      environment: {{ $environment }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: {{ printf "%s" .Values.appName }}
+        environment: {{ $environment }}
+    spec:
+      containers:
+        - name: {{ printf "pod-%s" $fullAppName }}
+          image: {{ $image }}
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 200m
+              memory: 500Mi
+          volumeMounts:
+            - name: config
+              mountPath: /app/dist/config.json
+              subPath: config.json
+      nodeSelector:
+        name: userpool
+      volumes:
+        - name: config
+          configMap:
+            name: {{ printf "cm-%s" $fullAppName }}

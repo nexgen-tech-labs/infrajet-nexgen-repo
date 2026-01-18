@@ -1,0 +1,31 @@
+---
+{{ $environment := printf "%s" .Values.global.environment -}}
+{{- $fullAppName := printf "%s-%s" .Values.appName $environment -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "cm-%s" $fullAppName }}
+  labels:
+    app: {{ printf "%s" .Values.appName }}
+    environment: {{ $environment }}
+data:
+  APP_ENV: "development"  # development, production
+  LOG_LEVEL: "DEBUG"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+  REFRESH_TOKEN_EXPIRE_DAYS: "7"
+  AZURE_FILE_SHARE_NAME: "infrajet-github-checkout"
+  AZURE_BASE_DIRECTORY: "projects"
+  AZURE_ENABLED: "true"
+  AZURE_AUTO_CREATE_SHARE: "true"
+  AZURE_RETRY_ATTEMPTS: "3"
+  AZURE_RETRY_DELAY: "1.0"
+  AZURE_TIMEOUT_SECONDS: "30"
+  AZURE_MAX_FILE_SIZE_MB: "100"
+  AZURE_ENABLE_LOGGING: "true"
+  EMAILS_FROM_EMAIL: "noreply@yourdomain.com"
+  EMAILS_FROM_NAME: "Infrajet"
+  ENTRA_AUTH_ENABLED: "false"
+  GITHUB_INTEGRATION_ENABLED: "true"
+  SMTP_TLS: "True"
+  SMTP_PORT: "587"
+  SMTP_HOST: "smtp.gmail.com"

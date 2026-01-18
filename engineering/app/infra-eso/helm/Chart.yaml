@@ -1,0 +1,16 @@
+---
+apiVersion: v2
+name: infra-eso
+description: Install External Secrets Operator.
+
+maintainers:
+  - name: darshanasys
+    email: darshana.m@ngtl.tech
+
+type: application
+version: 0.1.5
+
+dependencies:
+  - name: external-secrets
+    version: 0.20.3
+    repository: https://charts.external-secrets.io

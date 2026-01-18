@@ -1,0 +1,36 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-nexgen-backend-dev
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  destination:
+    namespace: be-dev-infrajet-ns
+    server: {{ .Values.argocd.destination.server }}
+  project: 'default'
+  source:
+    helm:
+      parameters:
+        - name: appName
+          value: nexgen-backend
+        - name: global.environment
+          value: dev
+        - name: hostname
+          value: backend
+        - name: FRONTEND_URL
+          value: 'app-dev.infrajet.dev'
+        - name: global.appVersion
+          value: {{ .Values.global.appVersion.dev }}
+        - name: global.registry
+          value: {{ .Values.global.registry }}
+    chart: nexgen-backend
+    repoURL: {{ .Values.argocd.source.chartRepoURL }}
+    targetRevision: 0.1.8 # x-release-please-version
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

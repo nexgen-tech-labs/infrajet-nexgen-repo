@@ -1,0 +1,92 @@
+---
+argo-cd:
+  installCRDs: false
+  configs:
+    cm:
+      accounts.service-account: apiKey
+      dex.config: |
+        connectors:
+          - type: github
+            id: github
+            name: GitHub
+            config:
+              clientID: $github-sso-credentials:clientID
+              clientSecret: $github-sso-credentials:clientSecret
+              orgs:
+                - name: nexgen-tech-labs
+      resource.exclusions: |
+        - apiGroups:
+            - '*'
+          kinds:
+            - ProviderConfigUsage
+      statusbadge.enabled: true
+    params:
+      server.basehref: /argo-cd/
+      server.insecure: true
+      server.rootpath: '/argo-cd'
+  controller:
+    env:
+      - name: ARGOCD_K8S_CLIENT_QPS
+        value: '300'
+    initContainers:
+      - name: download-tools
+        image: alpine:3.21.3
+        command: [sh, -c]
+        args:
+          - wget -qO kubelogin.zip https://github.com/Azure/kubelogin/releases/download/v0.0.34/kubelogin-linux-amd64.zip &&
+            unzip kubelogin.zip && mv bin/linux_amd64/kubelogin /custom-tools/
+        volumeMounts:
+          - mountPath: /custom-tools
+            name: custom-tools
+    volumeMounts:
+      - mountPath: /usr/local/bin/kubelogin
+        name: custom-tools
+        subPath: kubelogin
+    volumes:
+      - name: custom-tools
+        emptyDir: {}
+  global:
+    additionalLabels:
+      environment: management
+    nodeSelector:
+      name: userpool
+  repoServer:
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+  server:
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+    ingress:
+      annotations:
+        kubernetes.io/ingress.class: nginx
+        nginx.ingress.kubernetes.io/rewrite-target: /argo-cd/$2
+      enabled: true
+      extraPaths:
+        - backend:
+            service:
+              name: argo-cd-argocd-server
+              port:
+                number: 80
+          path: /argo-cd
+          pathType: Prefix
+      path: /argo-cd(/|$)(.*)
+      pathType: ImplementationSpecific
+    initContainers:
+      - name: download-tools
+        image: alpine:3.21.3
+        command: [sh, -c]
+        args:
+          - wget -qO kubelogin.zip https://github.com/Azure/kubelogin/releases/download/v0.0.34/kubelogin-linux-amd64.zip &&
+            unzip kubelogin.zip && mv bin/linux_amd64/kubelogin /custom-tools/
+        volumeMounts:
+          - mountPath: /custom-tools
+            name: custom-tools
+    volumeMounts:
+      - mountPath: /usr/local/bin/kubelogin
+        name: custom-tools
+        subPath: kubelogin
+    volumes:
+      - name: custom-tools
+        emptyDir: {}

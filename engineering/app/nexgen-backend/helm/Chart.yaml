@@ -1,0 +1,12 @@
+---
+apiVersion: v2
+name: nexgen-backend
+description: A Helm chart, for deploying backend app to AKS.
+
+maintainers:
+  - name: darshanasys
+    email: darshana.m@ngtl.tech
+
+type: application
+
+version: 0.1.8

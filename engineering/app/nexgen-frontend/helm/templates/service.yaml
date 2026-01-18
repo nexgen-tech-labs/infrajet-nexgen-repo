@@ -1,0 +1,19 @@
+
+{{ $environment := printf "%s" .Values.global.environment -}}
+{{- $fullAppName := printf "%s-%s" .Values.appName $environment -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{ printf "%s" .Values.appName }}
+    environment: {{ $environment }}
+  name: {{ printf "service-%s" $fullAppName }}
+spec:
+  ports:
+    - name: http
+      port: 8080
+  selector:
+    app: {{ printf "%s" .Values.appName }}
+    environment: {{ $environment }}
+  type: ClusterIP

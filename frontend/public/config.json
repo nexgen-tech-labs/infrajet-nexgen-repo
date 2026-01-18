@@ -1,0 +1,7 @@
+{
+  "GITHUB_APP_SLUG": "infrajet-auth",
+  "INFRAJET_API_URL": "http://localhost:8000",
+  "SUPABASE_PROJECT_ID": "",
+  "SUPABASE_PUBLISHABLE_KEY": "",
+  "SUPABASE_URL": ""
+}

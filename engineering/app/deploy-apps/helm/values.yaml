@@ -1,0 +1,24 @@
+---
+argocd:
+  destination:
+    namespace: argocd
+    server: https://kubernetes.default.svc
+  source:
+    chartRepoURL: acrnexgen.azurecr.io/helm
+    repoURL: https://github.com/nexgen-tech-labs/infrajet-nexgen-monorepo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  rbac:
+    policy.default: "role:readonly"
+    policy.csv: |
+      g, nexgen-tech-labs:nexgen-startup-team, role:admin
+
+global:
+  appVersion:
+    dev: "0.2.2"
+    prod: "0.2.2"
+  registry: acrnexgen.azurecr.io/acrnexgen

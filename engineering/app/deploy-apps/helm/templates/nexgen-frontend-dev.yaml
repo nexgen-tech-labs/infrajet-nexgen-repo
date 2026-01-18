@@ -1,0 +1,44 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-nexgen-frontend-dev
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  destination:
+    namespace: fe-dev-infrajet-ns
+    server: {{ .Values.argocd.destination.server }}
+  project: 'default'
+  source:
+    helm:
+      parameters:
+        - name: appName
+          value: nexgen-frontend
+        - name: global.environment
+          value: dev
+        - name: hostname
+          value: app
+        - name: global.appVersion
+          value: {{ .Values.global.appVersion.dev }}
+        - name: global.registry
+          value: {{ .Values.global.registry }}
+      values: |
+        deploy:
+          config: |
+            {
+              "GITHUB_APP_SLUG": "infrajet-auth",
+              "INFRAJET_API_URL": "https://backend-dev.infrajet.dev",
+              "SUPABASE_PROJECT_ID": "",
+              "SUPABASE_PUBLISHABLE_KEY": "",
+              "SUPABASE_URL": ""
+            }
+    chart: nexgen-frontend
+    repoURL: {{ .Values.argocd.source.chartRepoURL }}
+    targetRevision: 0.1.10 # x-release-please-version
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

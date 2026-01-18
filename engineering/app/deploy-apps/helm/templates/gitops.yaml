@@ -1,0 +1,21 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitops
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  destination:
+    namespace: {{ .Values.argocd.destination.namespace }}
+    server: {{ .Values.argocd.destination.server }}
+  project: default
+  source:
+    path: engineering/app/deploy-apps/helm/
+    repoURL: {{ .Values.argocd.source.repoURL }}
+    targetRevision: HEAD
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
