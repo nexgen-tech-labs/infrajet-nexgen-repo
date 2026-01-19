@@ -1,20 +1,27 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import sessionmaker, declarative_base
-from sqlalchemy.pool import NullPool
-from typing import AsyncGenerator
+from sqlalchemy.orm import sessionmaker
+from google.cloud.sql.connector import Connector
+import pg8000
+import os
 
-from app.core.config import get_settings
+# Cloud SQL Python Connector
+connector = Connector()
 
-settings = get_settings()
+# Function to get a database connection
+def getconn() -> pg8000.dbapi.Connection:
+    conn: pg8000.dbapi.Connection = connector.connect(
+        os.environ["CLOUD_SQL_INSTANCE_CONNECTION_NAME"],
+        "pg8000",
+        user=os.environ["DB_USER"],
+        password=os.environ["DB_PASS"],
+        db=os.environ["DB_NAME"]
+    )
+    return conn
 
 # Create async engine
 engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.APP_ENV == "development",
-    future=True,
-    pool_pre_ping=True,
-    pool_recycle=3600,
-    poolclass=NullPool if settings.APP_ENV == "test" else None,
+    "postgresql+pg8000://",
+    creator=getconn,
 )
 
 # Create async session factory
@@ -31,19 +38,3 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         except Exception as e:
             await session.rollback()
             raise e
-
-# Alias for async database session (for consistency)
-get_async_db = get_db
-
-# For testing
-async def create_tables():
-    from app.models.base import Base
-    
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-async def drop_tables():
-    from app.models.base import Base
-    
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)

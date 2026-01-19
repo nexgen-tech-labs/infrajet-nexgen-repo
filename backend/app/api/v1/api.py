@@ -25,6 +25,7 @@ from app.api.v1.websocket.routes import router as websocket_router
 from app.api.v1.websocket.dashboard_routes import router as websocket_dashboard_router
 from app.api.v1.chat import router as chat_router
 from app.core.settings import get_settings
+from app.middleware.auth import verify_firebase_token
 
 settings = get_settings()
 
@@ -65,7 +66,6 @@ api_router.include_router(enhanced_chat_router, tags=["enhanced-autonomous-chat"
 from app.api.v1.websocket.enhanced_chat_routes import router as enhanced_chat_ws_router
 api_router.include_router(enhanced_chat_ws_router, prefix="/websocket", tags=["enhanced-chat-websocket"])
 
-
 def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.PROJECT_NAME,
@@ -83,17 +83,8 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Add session middleware for OAuth state management
-    app.add_middleware(
-        SessionMiddleware,
-        secret_key=settings.SECRET_KEY,
-        max_age=3600,  # 1 hour
-        same_site="lax",
-        https_only=False,  # Set to True in production with HTTPS
-    )
-
     # Include API router
-    app.include_router(api_router, prefix=settings.API_V1_STR)
+    app.include_router(api_router, prefix=settings.API_V1_STR, dependencies=[Depends(verify_firebase_token)])
 
     @app.get("/")
     async def root():
