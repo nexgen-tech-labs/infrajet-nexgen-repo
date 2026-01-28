@@ -1,17 +1,13 @@
-from datetime import timedelta
-from typing import Optional
-
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Body
 from logconfig.logger import get_logger, get_context_filter
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.db.session import get_db
-from app.middleware.supabase_auth import get_current_user_id
+from app.dependencies.auth import get_current_user_id
 from app.models.user import User
 from app.schemas.token import Token
-from app.schemas.user import UserCreate, UserInResponse, UserRegister
+from app.schemas.user import UserInResponse
 from app.services.auth import AuthService
 
 # Initialize logger
@@ -20,94 +16,34 @@ context_filter = get_context_filter()
 router = APIRouter()
 settings = get_settings()
 
-@router.post("/register", response_model=UserInResponse, status_code=status.HTTP_201_CREATED)
-async def register(
-    request: Request,
-    user_in: UserRegister,
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Register a new user.
-    """
-    # Set request context
-    context_filter.set_context(
-        request_id=request.headers.get("x-request-id", ""),
-        user_email=user_in.email,
-        path=request.url.path
-    )
-    
-    logger.info(f"Registration attempt for email: {user_in.email}")
-    
-    # Check if passwords match
-    if user_in.password != user_in.password_confirm:
-        logger.warning("Passwords do not match during registration")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Passwords do not match",
-        )
-    
-    try:
-        # Create user
-        user = await AuthService.create_user(
-            db=db,
-            user_in=UserCreate(
-                email=user_in.email,
-                password=user_in.password,
-                full_name=user_in.full_name,
-            ),
-        )
-        logger.info(f"User registered successfully: {user_in.email}")
-        
-        # Generate tokens
-        access_token, refresh_token, expires_at = await AuthService.create_tokens(db, user)
-        logger.debug("Access and refresh tokens generated")
-        
-        return UserInResponse(
-            user=user,
-            token=access_token,
-            refresh_token=refresh_token,
-        )
-    except Exception as e:
-        logger.error(f"Error during user registration: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Could not register user. Please try again."
-        )
-
 @router.post("/login", response_model=UserInResponse)
 async def login(
     request: Request,
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    id_token: str = Body(..., embed=True),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    OAuth2 compatible token login, get an access token for future requests
+    Firebase token login, get an access token for future requests
     """
-    # Set request context
     context_filter.set_context(
         request_id=request.headers.get("x-request-id", ""),
-        user_email=form_data.username,
         path=request.url.path
     )
     
-    logger.info(f"Login attempt for email: {form_data.username}")
+    logger.info(f"Login attempt with Firebase ID token")
     
     try:
-        user = await AuthService.login(
-            db=db,
-            email=form_data.username,
-            password=form_data.password,
-        )
+        user_in_response = await AuthService.login(db=db, id_token=id_token)
         
-        if not user:
-            logger.warning(f"Failed login attempt for email: {form_data.username}")
+        if not user_in_response:
+            logger.warning(f"Failed login attempt with Firebase ID token")
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Incorrect email or password",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Firebase ID token",
             )
         
-        logger.info(f"User logged in successfully: {form_data.username}")
-        return user
+        logger.info(f"User logged in successfully")
+        return user_in_response
         
     except Exception as e:
         logger.error(f"Error during login: {str(e)}", exc_info=True)
@@ -119,13 +55,12 @@ async def login(
 @router.post("/refresh", response_model=Token)
 async def refresh_token(
     request: Request,
-    refresh_token: str,
+    refresh_token: str = Body(..., embed=True),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Refresh access token using refresh token
     """
-    # Set request context
     context_filter.set_context(
         request_id=request.headers.get("x-request-id", ""),
         path=request.url.path
@@ -153,13 +88,12 @@ async def refresh_token(
 @router.post("/logout")
 async def logout(
     request: Request,
-    refresh_token: str,
+    refresh_token: str = Body(..., embed=True),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Log out by invalidating the refresh token
     """
-    # Set request context
     context_filter.set_context(
         request_id=request.headers.get("x-request-id", ""),
         path=request.url.path
@@ -187,24 +121,23 @@ async def logout(
 @router.post("/logout/all")
 async def logout_all(
     request: Request,
-    current_user: User = Depends(get_current_user),
+    current_user_id: str = Depends(get_current_user_id),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Log out from all devices by invalidating all refresh tokens for the current user
     """
-    # Set request context
     context_filter.set_context(
         request_id=request.headers.get("x-request-id", ""),
-        user_id=current_user.id,
+        user_id=current_user_id,
         path=request.url.path
     )
     
-    logger.info(f"Logout all sessions for user: {current_user.id}")
+    logger.info(f"Logout all sessions for user: {current_user_id}")
     
     try:
-        await AuthService.logout_all_sessions(db, current_user.id)
-        logger.info(f"Successfully logged out user {current_user.id} from all devices")
+        await AuthService.logout_all_sessions(db, current_user_id)
+        logger.info(f"Successfully logged out user {current_user_id} from all devices")
         return {"detail": "Successfully logged out from all devices"}
     except Exception as e:
         logger.error(f"Error during logout all: {str(e)}", exc_info=True)

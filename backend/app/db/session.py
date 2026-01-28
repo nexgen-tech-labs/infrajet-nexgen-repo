@@ -1,27 +1,15 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from google.cloud.sql.connector import Connector
-import pg8000
-import os
+from app.core.settings import get_settings
 
-# Cloud SQL Python Connector
-connector = Connector()
+# Get settings
+settings = get_settings()
 
-# Function to get a database connection
-def getconn() -> pg8000.dbapi.Connection:
-    conn: pg8000.dbapi.Connection = connector.connect(
-        os.environ["CLOUD_SQL_INSTANCE_CONNECTION_NAME"],
-        "pg8000",
-        user=os.environ["DB_USER"],
-        password=os.environ["DB_PASS"],
-        db=os.environ["DB_NAME"]
-    )
-    return conn
-
-# Create async engine
+# Create async engine from the DATABASE_URL
 engine = create_async_engine(
-    "postgresql+pg8000://",
-    creator=getconn,
+    settings.DATABASE_URL,
+    pool_pre_ping=True,
+    echo=False,  # Set to True to see SQL queries
 )
 
 # Create async session factory
@@ -29,12 +17,25 @@ async_session_factory = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
 )
 
-# Dependency to get DB session
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db() -> AsyncSession:
+    """
+    Dependency to get an async database session.
+    """
     async with async_session_factory() as session:
         try:
             yield session
-            await session.commit()
-        except Exception as e:
+        except Exception:
             await session.rollback()
-            raise e
+            raise
+        finally:
+            await session.close()
+
+async def create_tables():
+    """
+    Create all database tables.
+    """
+    from app.models.base import Base  # Import your Base model
+    async with engine.begin() as conn:
+        # This will create tables for all models that inherit from Base
+        # Note: In a production environment, you should use Alembic for migrations.
+        await conn.run_sync(Base.metadata.create_all)
