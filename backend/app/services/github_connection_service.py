@@ -66,7 +66,7 @@ class GitHubConnectionService:
             # Get existing connections
             result = await db.execute(
                 select(GitHubConnection).filter(
-                    GitHubConnection.supabase_user_id == user.supabase_user_id,
+                    GitHubConnection.user_id == user.id,
                     GitHubConnection.is_active == True
                 )
             )
@@ -188,13 +188,13 @@ class GitHubConnectionService:
             # Get or create GitHub connection record
             result = await db.execute(
                 select(GitHubConnection).filter(
-                    GitHubConnection.supabase_user_id == user.supabase_user_id
+                    GitHubConnection.user_id == user.id
                 )
             )
             github_connection = result.scalars().first()
 
             if not github_connection:
-                github_connection = GitHubConnection(supabase_user_id=user.supabase_user_id)
+                github_connection = GitHubConnection(user_id=user.id)
                 db.add(github_connection)
 
             # Connect GitHub App
@@ -243,7 +243,7 @@ class GitHubConnectionService:
             # Get GitHub connections
             result = await db.execute(
                 select(GitHubConnection).filter(
-                    GitHubConnection.supabase_user_id == user.supabase_user_id,
+                    GitHubConnection.user_id == user.id,
                     GitHubConnection.is_active == True
                 )
             )
@@ -317,7 +317,7 @@ class GitHubConnectionService:
             # Get available connections
             result = await db.execute(
                 select(GitHubConnection).filter(
-                    GitHubConnection.supabase_user_id == user.supabase_user_id,
+                    GitHubConnection.user_id == user.id,
                     GitHubConnection.is_active == True
                 )
             )
@@ -508,7 +508,7 @@ class GitHubConnectionService:
             # Get GitHub connections
             result = await db.execute(
                 select(GitHubConnection).filter(
-                    GitHubConnection.supabase_user_id == user.supabase_user_id,
+                    GitHubConnection.user_id == user.id,
                     GitHubConnection.is_active == True
                 )
             )

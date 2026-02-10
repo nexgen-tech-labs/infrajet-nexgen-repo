@@ -36,9 +36,6 @@ class User(Base):
     full_name = Column(String, index=True, nullable=True)
     is_active = Column(Boolean(), default=True)
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
-    
-    # Supabase integration
-    supabase_user_id = Column(String(255), nullable=True, unique=True, index=True)
 
     # Profile fields (keeping these as they may be useful for other auth providers)
     profile_picture_url = Column(String(500), nullable=True)
@@ -69,7 +66,6 @@ class User(Base):
     refresh_tokens = relationship(
         "RefreshToken", back_populates="user", cascade="all, delete-orphan"
     )
-    # Note: projects relationship removed since projects use Supabase user_id directly
     github_sync_records = relationship(
         "GitHubSyncRecord", back_populates="user", cascade="all, delete-orphan"
     )
@@ -306,7 +302,7 @@ class GitHubConnection(SimpleBase):
     __tablename__ = "github_connections"
 
     id = Column(Integer, primary_key=True, index=True)
-    supabase_user_id = Column(String(255), nullable=False, index=True)  # Links to Supabase user
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 
     # GitHub fields
     github_user_id = Column(Integer, nullable=True, unique=True, index=True)
@@ -353,7 +349,7 @@ class GitHubConnection(SimpleBase):
         )
 
     def __repr__(self):
-        return f"<GitHubConnection supabase_user_id={self.supabase_user_id} github_user={self.github_username}>"
+        return f"<GitHubConnection user_id={self.user_id} github_user={self.github_username}>"
 
 
 class WebSocketSession(Base):

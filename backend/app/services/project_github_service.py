@@ -10,10 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.models.project import Project, CodeGeneration
-from app.models.user import GitHubConnection
+from app.models.user import GitHubConnection, User
 from app.services.github_app_oauth_service import GitHubAppOAuthService
 from app.services.azure_file_service import get_azure_file_service
-from app.dependencies.auth import CurrentUser
+# from app.dependencies.auth import CurrentUser # CurrentUser type hint removed as it might be specific to Supabase
 
 from logconfig.logger import get_logger
 
@@ -37,7 +37,7 @@ class ProjectGitHubService:
     async def link_project_to_repo(
         self,
         db: AsyncSession,
-        user: CurrentUser,
+        user: User, # Use User model directly
         project_id: str,
         repo_owner: str,
         repo_name: str,
@@ -62,7 +62,7 @@ class ProjectGitHubService:
             result = await db.execute(
                 select(Project).filter(
                     Project.id == project_id,
-                    Project.user_id == user.supabase_user_id
+                    Project.user_id == user.id
                 )
             )
             project = result.scalars().first()
@@ -76,14 +76,14 @@ class ProjectGitHubService:
             # Get GitHub connection
             result = await db.execute(
                 select(GitHubConnection).filter(
-                    GitHubConnection.supabase_user_id == user.supabase_user_id,
+                    GitHubConnection.user_id == user.id,
                     GitHubConnection.is_active == True
                 )
             )
             github_conn = result.scalars().first()
 
             if not github_conn:
-                logger.warning(f"No active GitHub connection found for user {user.supabase_user_id}")
+                logger.warning(f"No active GitHub connection found for user {user.id}")
                 return {
                     "success": False,
                     "error": "GitHub account not connected. Please connect your GitHub account first.",
@@ -92,7 +92,7 @@ class ProjectGitHubService:
 
             # Validate that we have the necessary tokens
             if not github_conn.github_access_token:
-                logger.error(f"GitHub connection found but no access token for user {user.supabase_user_id}")
+                logger.error(f"GitHub connection found but no access token for user {user.id}")
                 return {
                     "success": False,
                     "error": "GitHub connection is incomplete. Please reconnect your GitHub account.",
@@ -145,7 +145,7 @@ class ProjectGitHubService:
     async def unlink_project_from_repo(
         self,
         db: AsyncSession,
-        user: CurrentUser,
+        user: User,
         project_id: str
     ) -> Dict[str, Any]:
         """
@@ -164,7 +164,7 @@ class ProjectGitHubService:
             result = await db.execute(
                 select(Project).filter(
                     Project.id == project_id,
-                    Project.user_id == user.supabase_user_id
+                    Project.user_id == user.id
                 )
             )
             project = result.scalars().first()
@@ -243,7 +243,7 @@ class ProjectGitHubService:
             # Get GitHub connection for project owner
             result = await db.execute(
                 select(GitHubConnection).filter(
-                    GitHubConnection.supabase_user_id == project.user_id,
+                    GitHubConnection.user_id == project.user_id,
                     GitHubConnection.is_active == True
                 )
             )
@@ -268,8 +268,9 @@ class ProjectGitHubService:
 
             # Get generation files from Azure
             azure_service = await get_azure_file_service()
+            # Convert integer user_id to string for Azure service if needed
             files = await azure_service.list_user_files(
-                user_id=project.user_id,
+                user_id=str(project.user_id),
                 project_id=project.id,
                 generation_id=generation.id
             )
@@ -284,7 +285,7 @@ class ProjectGitHubService:
             files_content = {}
             for file_info in files:
                 content = await azure_service.get_file_content(
-                    user_id=project.user_id,
+                    user_id=str(project.user_id),
                     project_id=project.id,
                     generation_id=generation.id,
                     file_path=file_info.relative_path
@@ -307,17 +308,23 @@ class ProjectGitHubService:
                 github_conn, repo_owner, repo_name
             )
 
-            # Create a user-like object for the GitHub service
-            from app.dependencies.auth import CurrentUser
-            mock_user = type('MockUser', (), {
-                'supabase_user_id': project.user_id,
-                'id': 'system'  # Mock ID for logging
-            })()
+            # Create a mock user object for the GitHub service if needed
+            # For now passing a dict or simple object if User model is expected but we don't have full user object loaded
+            # Ideally we should fetch the user or ensure User object is fully loaded.
+            # Assuming for now we can fetch the user.
+            user_result = await db.execute(select(User).filter(User.id == project.user_id))
+            user = user_result.scalars().first()
+            
+            if not user:
+                 return {
+                    "success": False,
+                    "error": "Project owner not found"
+                }
 
             # Sync to GitHub
             sync_result = await self.github_service.sync_files_to_repository(
                 db=db,
-                user=mock_user,
+                user=user,
                 repository_full_name=project.github_repo_name,
                 files_content=files_content,
                 commit_message=f"Auto-sync generation {generation.id[:8]}: {generation.query[:50]}...",
@@ -343,7 +350,7 @@ class ProjectGitHubService:
     async def push_project_files_to_repo(
         self,
         db: AsyncSession,
-        user: CurrentUser,
+        user: User,
         project_id: str,
         generation_id: Optional[str] = None,
         commit_message: str = "Manual sync from InfraJet",
@@ -368,7 +375,7 @@ class ProjectGitHubService:
             result = await db.execute(
                 select(Project).filter(
                     Project.id == project_id,
-                    Project.user_id == user.supabase_user_id
+                    Project.user_id == user.id
                 )
             )
             project = result.scalars().first()
@@ -381,8 +388,9 @@ class ProjectGitHubService:
 
             # Get all files for the project/generation
             azure_service = await get_azure_file_service()
+            # Convert user.id to string for Azure service
             files = await azure_service.list_user_files(
-                user_id=user.supabase_user_id,
+                user_id=str(user.id),
                 project_id=project_id,
                 generation_id=generation_id
             )
@@ -397,7 +405,7 @@ class ProjectGitHubService:
             files_content = {}
             for file_info in files:
                 content = await azure_service.get_file_content(
-                    user_id=user.supabase_user_id,
+                    user_id=str(user.id),
                     project_id=project_id,
                     generation_id=file_info.generation_id or generation_id,
                     file_path=file_info.relative_path
@@ -447,7 +455,7 @@ class ProjectGitHubService:
     async def pull_repo_to_project(
         self,
         db: AsyncSession,
-        user: CurrentUser,
+        user: User,
         project_id: str,
         repo_path: str = "",
         branch: str = "main"
@@ -470,7 +478,7 @@ class ProjectGitHubService:
             result = await db.execute(
                 select(Project).filter(
                     Project.id == project_id,
-                    Project.user_id == user.supabase_user_id
+                    Project.user_id == user.id
                 )
             )
             project = result.scalars().first()
@@ -498,7 +506,7 @@ class ProjectGitHubService:
     async def get_project_github_status(
         self,
         db: AsyncSession,
-        user: CurrentUser,
+        user: User,
         project_id: str
     ) -> Dict[str, Any]:
         """
@@ -517,7 +525,7 @@ class ProjectGitHubService:
             result = await db.execute(
                 select(Project).filter(
                     Project.id == project_id,
-                    Project.user_id == user.supabase_user_id
+                    Project.user_id == user.id
                 )
             )
             project = result.scalars().first()
@@ -581,7 +589,7 @@ class ProjectGitHubService:
     async def _should_use_oauth_token_for_user(
         self,
         db: AsyncSession,
-        user: CurrentUser,
+        user: User,
         repo_owner: str,
         repo_name: str
     ) -> bool:
@@ -589,7 +597,7 @@ class ProjectGitHubService:
         # Get user's GitHub connection
         result = await db.execute(
             select(GitHubConnection).filter(
-                GitHubConnection.supabase_user_id == user.supabase_user_id,
+                GitHubConnection.user_id == user.id,
                 GitHubConnection.is_active == True
             )
         )
@@ -603,7 +611,7 @@ class ProjectGitHubService:
     async def create_project_branch(
         self,
         db: AsyncSession,
-        user: CurrentUser,
+        user: User,
         project_id: str,
         new_branch_name: str,
         source_branch: str = "main"
@@ -646,7 +654,7 @@ class ProjectGitHubService:
             result = await db.execute(
                 select(Project).filter(
                     Project.id == project_id,
-                    Project.user_id == user.supabase_user_id
+                    Project.user_id == user.id
                 )
             )
             project = result.scalars().first()
@@ -691,7 +699,7 @@ class ProjectGitHubService:
     async def get_project_repository_branches(
         self,
         db: AsyncSession,
-        user: CurrentUser,
+        user: User,
         project_id: str
     ) -> Dict[str, Any]:
         """
@@ -710,7 +718,7 @@ class ProjectGitHubService:
             result = await db.execute(
                 select(Project).filter(
                     Project.id == project_id,
-                    Project.user_id == user.supabase_user_id
+                    Project.user_id == user.id
                 )
             )
             project = result.scalars().first()

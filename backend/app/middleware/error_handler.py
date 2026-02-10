@@ -28,7 +28,6 @@ from ..exceptions.base_exceptions import (
     ExternalServiceError,
 )
 from ..exceptions.azure_entra_exceptions import AzureEntraError
-from ..exceptions.supabase_exceptions import SupabaseError
 from ..exceptions.project_exceptions import ProjectError
 from ..exceptions.github_exceptions import GitHubError
 from ..exceptions.websocket_exceptions import WebSocketError
@@ -99,8 +98,6 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
         # Handle different exception types
         if isinstance(exception, SecurityError):
             return await self._handle_security_error(exception, request_context)
-        elif isinstance(exception, SupabaseError):
-            return await self._handle_supabase_error(exception, request_context)
         elif isinstance(exception, ProjectError):
             return await self._handle_project_error(exception, request_context)
         elif isinstance(exception, AzureEntraError):
@@ -148,49 +145,6 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
                 "security_level": exception.security_level,
                 "details": exception.details,
                 "response_actions": incident_response["response"],
-            }
-
-        return JSONResponse(
-            status_code=status_code,
-            content=response_data,
-            headers={"X-Request-ID": request_context["request_id"]},
-        )
-
-    async def _handle_supabase_error(
-        self, exception: SupabaseError, request_context: Dict[str, Any]
-    ) -> JSONResponse:
-        """Handle Supabase authentication errors."""
-        # Process the error
-        processed_error = await self.error_handler.handle_supabase_error(
-            exception, "supabase_operation", request_context
-        )
-
-        # Determine HTTP status code
-        status_code = self._get_supabase_status_code(exception)
-
-        # Create response
-        response_data = {
-            "error": "Supabase authentication error",
-            "error_code": exception.error_code,
-            "message": exception.user_message,
-            "timestamp": exception.timestamp.isoformat(),
-            "request_id": request_context["request_id"],
-        }
-
-        # Add troubleshooting guide
-        if exception.troubleshooting_guide:
-            response_data["troubleshooting"] = exception.troubleshooting_guide
-
-        # Add retry information if applicable
-        if exception.retryable:
-            response_data["retryable"] = True
-            response_data["retry_after"] = 5  # Default retry delay
-
-        # Add debug info if enabled
-        if self.include_debug_info:
-            response_data["debug"] = {
-                "severity": exception.severity,
-                "details": exception.details,
             }
 
         return JSONResponse(
@@ -566,36 +520,6 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
             return 429
         elif isinstance(exception, GitHubServiceUnavailableError):
             return 503
-        else:
-            return 400
-
-    def _get_supabase_status_code(self, exception: SupabaseError) -> int:
-        """Get HTTP status code for Supabase errors."""
-        from ..exceptions.supabase_exceptions import (
-            SupabaseTokenExpiredError,
-            SupabaseTokenInvalidError,
-            SupabaseTokenMissingError,
-            SupabaseAuthenticationError,
-            SupabaseUserNotFoundError,
-            SupabaseUserValidationError,
-            SupabaseServiceError,
-            SupabaseConnectionError,
-            SupabaseRateLimitError,
-            SupabaseConfigurationError,
-        )
-
-        if isinstance(exception, (SupabaseTokenExpiredError, SupabaseTokenInvalidError, SupabaseTokenMissingError, SupabaseAuthenticationError)):
-            return 401
-        elif isinstance(exception, (SupabaseUserValidationError,)):
-            return 403
-        elif isinstance(exception, (SupabaseUserNotFoundError,)):
-            return 404
-        elif isinstance(exception, SupabaseRateLimitError):
-            return 429
-        elif isinstance(exception, (SupabaseServiceError, SupabaseConnectionError)):
-            return 503
-        elif isinstance(exception, SupabaseConfigurationError):
-            return 500
         else:
             return 400
 

@@ -34,25 +34,6 @@ from .azure_entra_exceptions import (
     get_azure_entra_error_severity,
 )
 
-from .supabase_exceptions import (
-    SupabaseError,
-    SupabaseAuthenticationError,
-    SupabaseTokenError,
-    SupabaseTokenExpiredError,
-    SupabaseTokenInvalidError,
-    SupabaseTokenMissingError,
-    SupabaseUserValidationError,
-    SupabaseUserNotFoundError,
-    SupabaseServiceError,
-    SupabaseConnectionError,
-    SupabaseRateLimitError,
-    SupabaseConfigurationError,
-    map_supabase_exception,
-    is_retryable_supabase_error,
-    get_supabase_error_severity,
-    get_supabase_retry_delay,
-)
-
 from .project_exceptions import (
     ProjectError,
     ProjectNotFoundError,
@@ -163,23 +144,6 @@ __all__ = [
     "map_azure_entra_exception",
     "is_retryable_azure_entra_error",
     "get_azure_entra_error_severity",
-    # Supabase exceptions
-    "SupabaseError",
-    "SupabaseAuthenticationError",
-    "SupabaseTokenError",
-    "SupabaseTokenExpiredError",
-    "SupabaseTokenInvalidError",
-    "SupabaseTokenMissingError",
-    "SupabaseUserValidationError",
-    "SupabaseUserNotFoundError",
-    "SupabaseServiceError",
-    "SupabaseConnectionError",
-    "SupabaseRateLimitError",
-    "SupabaseConfigurationError",
-    "map_supabase_exception",
-    "is_retryable_supabase_error",
-    "get_supabase_error_severity",
-    "get_supabase_retry_delay",
     # Project exceptions
     "ProjectError",
     "ProjectNotFoundError",

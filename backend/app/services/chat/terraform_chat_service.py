@@ -29,7 +29,7 @@ logger = get_logger()
 @dataclass
 class TerraformChatRequest:
     """Request for Terraform chat generation."""
-    user_id: str
+    user_id: int
     project_id: str
     message: str
     thread_id: Optional[str] = None
@@ -77,9 +77,6 @@ class TerraformChatService:
             TerraformChatResponse with status and next steps
         """
         try:
-            # Get or create internal user ID from Supabase user ID
-            internal_user_id = await self._get_internal_user_id(request.user_id)
-
             # Create or get thread
             thread = await self._get_or_create_thread(request.project_id, request.user_id, request.thread_id, request.cloud_provider)
 
@@ -94,7 +91,7 @@ class TerraformChatService:
 
             # Send processing started notification
             await websocket_manager.send_to_user(
-                request.user_id,
+                str(request.user_id),
                 {
                     "type": "terraform_chat_processing",
                     "thread_id": thread.id,
@@ -121,7 +118,7 @@ class TerraformChatService:
 
                 # Send clarification request
                 await websocket_manager.send_to_user(
-                    request.user_id,
+                    str(request.user_id),
                     {
                         "type": "terraform_clarification_needed",
                         "thread_id": thread.id,
@@ -140,7 +137,7 @@ class TerraformChatService:
 
             # No clarification needed, proceed with generation
             await websocket_manager.send_to_user(
-                request.user_id,
+                str(request.user_id),
                 {
                     "type": "terraform_generation_starting",
                     "thread_id": thread.id,
@@ -152,10 +149,9 @@ class TerraformChatService:
             # Start async generation with progress monitoring
             job_id = await self._start_generation_with_progress_tracking(
                 query=request.message,
-                user_id=internal_user_id,
+                user_id=request.user_id,
                 project_id=request.project_id,
                 thread_id=thread.id,
-                supabase_user_id=request.user_id,
                 cloud_provider=request.cloud_provider
             )
 
@@ -170,7 +166,7 @@ class TerraformChatService:
             logger.error(f"Error processing Terraform chat message: {e}")
 
             await websocket_manager.send_to_user(
-                request.user_id,
+                str(request.user_id),
                 {
                     "type": "terraform_chat_error",
                     "thread_id": request.thread_id,
@@ -189,7 +185,7 @@ class TerraformChatService:
     async def process_clarification_response(
         self,
         project_id: str,
-        user_id: str,
+        user_id: int,
         thread_id: str,
         responses: Dict[str, str]
     ) -> TerraformChatResponse:
@@ -206,9 +202,6 @@ class TerraformChatService:
             TerraformChatResponse with generation status
         """
         try:
-            # Get internal user ID
-            internal_user_id = await self._get_internal_user_id(user_id)
-
             # Save clarification responses as user message
             response_content = "Clarification responses: " + ", ".join([f"{k}: {v}" for k, v in responses.items()])
             await self._save_message(
@@ -234,7 +227,7 @@ class TerraformChatService:
 
             # Send generation starting notification
             await websocket_manager.send_to_user(
-                user_id,
+                str(user_id),
                 {
                     "type": "terraform_generation_starting",
                     "thread_id": thread_id,
@@ -246,10 +239,9 @@ class TerraformChatService:
             # Start generation with combined prompt
             job_id = await self._start_generation_with_progress_tracking(
                 query=combined_prompt,
-                user_id=internal_user_id,
+                user_id=user_id,
                 project_id=project_id,
                 thread_id=thread_id,
-                supabase_user_id=user_id,
                 cloud_provider="AWS"  # Default, could be stored in thread
             )
 
@@ -264,7 +256,7 @@ class TerraformChatService:
             logger.error(f"Error processing clarification response: {e}")
 
             await websocket_manager.send_to_user(
-                user_id,
+                str(user_id),
                 {
                     "type": "terraform_chat_error",
                     "thread_id": thread_id,
@@ -280,7 +272,7 @@ class TerraformChatService:
                 message=f"Error processing clarifications: {str(e)}"
             )
 
-    async def _get_or_create_thread(self, project_id: str, user_id: str, thread_id: Optional[str], cloud_provider: str) -> ConversationThread:
+    async def _get_or_create_thread(self, project_id: str, user_id: int, thread_id: Optional[str], cloud_provider: str) -> ConversationThread:
         """Get existing thread or create new one."""
         # Check if we're already in a transaction
         if self.db.in_transaction():
@@ -348,7 +340,7 @@ class TerraformChatService:
         logger.info(f"Created new conversation thread {thread.id} for user {user_id}")
         return thread
 
-    async def _save_message(self, project_id: str, user_id: str, thread_id: str, message_content: str, message_type: MessageType, generation_id: Optional[str] = None):
+    async def _save_message(self, project_id: str, user_id: int, thread_id: str, message_content: str, message_type: MessageType, generation_id: Optional[str] = None):
         """Save a message to the database."""
         # Check if we're already in a transaction
         if self.db.in_transaction():
@@ -403,7 +395,7 @@ class TerraformChatService:
         logger.debug(f"Saved {message_type.value} message to thread {thread_id}")
 
     async def _start_generation_with_progress_tracking(
-        self, query: str, user_id: int, project_id: str, thread_id: str, supabase_user_id: str, cloud_provider: str
+        self, query: str, user_id: int, project_id: str, thread_id: str, cloud_provider: str
     ) -> str:
         """Start generation with comprehensive progress tracking."""
         # Start the generation
@@ -413,16 +405,15 @@ class TerraformChatService:
             project_id=project_id,
             scenario=GenerationScenario.NEW_RESOURCE,
             enable_realtime=True,
-            supabase_user_id=supabase_user_id,
             cloud_provider=cloud_provider
         )
 
         # Start monitoring in background
-        asyncio.create_task(self._monitor_generation_progress(job_id, thread_id, supabase_user_id, project_id))
+        asyncio.create_task(self._monitor_generation_progress(job_id, thread_id, user_id, project_id))
 
         return job_id
 
-    async def _monitor_generation_progress(self, job_id: str, thread_id: str, user_id: str, project_id: str):
+    async def _monitor_generation_progress(self, job_id: str, thread_id: str, user_id: int, project_id: str):
         """Monitor generation progress and send updates."""
         try:
             # Poll for completion (simplified - in production use events)
@@ -442,7 +433,7 @@ class TerraformChatService:
                             break
                         elif status.get("status") == "failed":
                             # Send failure notification
-                            await websocket_manager.send_to_user(user_id, {
+                            await websocket_manager.send_to_user(str(user_id), {
                                 "type": "terraform_generation_failed",
                                 "thread_id": thread_id,
                                 "job_id": job_id,
@@ -455,7 +446,7 @@ class TerraformChatService:
                             progress_percentage = status.get("progress_percentage", 0)
                             current_step = status.get("current_step", "Processing...")
 
-                            await websocket_manager.send_to_user(user_id, {
+                            await websocket_manager.send_to_user(str(user_id), {
                                 "type": "terraform_generation_progress",
                                 "thread_id": thread_id,
                                 "job_id": job_id,
@@ -473,7 +464,7 @@ class TerraformChatService:
                     elapsed_time += poll_interval
 
             if elapsed_time >= max_wait_time:
-                await websocket_manager.send_to_user(user_id, {
+                await websocket_manager.send_to_user(str(user_id), {
                     "type": "terraform_generation_timeout",
                     "thread_id": thread_id,
                     "job_id": job_id,
@@ -484,7 +475,7 @@ class TerraformChatService:
         except Exception as e:
             logger.error(f"Error monitoring generation progress: {e}")
 
-    async def _send_generation_summary(self, thread_id: str, user_id: str, status: Dict[str, Any], project_id: str):
+    async def _send_generation_summary(self, thread_id: str, user_id: int, status: Dict[str, Any], project_id: str):
         """Send generation completion summary."""
         try:
             # Get generation details
@@ -529,7 +520,7 @@ class TerraformChatService:
             )
 
             # Send WebSocket notification
-            await websocket_manager.send_to_user(user_id, {
+            await websocket_manager.send_to_user(str(user_id), {
                 "type": "terraform_generation_completed",
                 "thread_id": thread_id,
                 "job_id": job_id,
@@ -542,7 +533,7 @@ class TerraformChatService:
         except Exception as e:
             logger.error(f"Error sending generation summary: {e}")
 
-    async def get_message_history(self, project_id: str, user_id: str, thread_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    async def get_message_history(self, project_id: str, user_id: int, thread_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
         """Get message history for a conversation thread."""
         try:
             query = select(ProjectChat).filter(
@@ -579,84 +570,6 @@ class TerraformChatService:
         except Exception as e:
             logger.error(f"Error getting message history: {e}")
             return []
-
-    async def _get_internal_user_id(self, supabase_user_id: str) -> int:
-        """
-        Get or create internal integer user ID from Supabase user ID.
-
-        Args:
-            supabase_user_id: Supabase user ID (UUID string)
-
-        Returns:
-            Internal integer user ID
-        """
-        from sqlalchemy import select
-        from app.models.user import User
-
-        # Check if we're already in a transaction
-        if self.db.in_transaction():
-            # We're already in a transaction, just query without starting a new one
-            try:
-                # Try to find existing user
-                result = await self.db.execute(
-                    select(User).filter(User.supabase_user_id == supabase_user_id)
-                )
-                user = result.scalar_one_or_none()
-
-                if user:
-                    return user.id
-
-                # User doesn't exist, create a new one
-                # This is a simplified version - in production you'd want more user details
-                new_user = User(
-                    email=f"user-{supabase_user_id[:8]}@temp.local",  # Temporary email
-                    supabase_user_id=supabase_user_id,
-                    is_active=True
-                )
-
-                self.db.add(new_user)
-                await self.db.flush()
-                await self.db.refresh(new_user)
-
-                logger.info(f"Created new internal user {new_user.id} for Supabase user {supabase_user_id}")
-                return new_user.id
-
-            except Exception as e:
-                logger.error(f"Failed to get internal user ID for {supabase_user_id}: {e}")
-                # Fallback to a default user ID - this should be improved
-                return 1
-        else:
-            # Start a new transaction
-            async with self.db.begin():
-                try:
-                    # Try to find existing user
-                    result = await self.db.execute(
-                        select(User).filter(User.supabase_user_id == supabase_user_id)
-                    )
-                    user = result.scalar_one_or_none()
-
-                    if user:
-                        return user.id
-
-                    # User doesn't exist, create a new one
-                    # This is a simplified version - in production you'd want more user details
-                    new_user = User(
-                        email=f"user-{supabase_user_id[:8]}@temp.local",  # Temporary email
-                        supabase_user_id=supabase_user_id,
-                        is_active=True
-                    )
-
-                    self.db.add(new_user)
-                    await self.db.flush()
-                    await self.db.refresh(new_user)
-
-                    logger.info(f"Created new internal user {new_user.id} for Supabase user {supabase_user_id}")
-                    return new_user.id
-
-                except Exception as e:
-                    logger.error(f"Failed to get internal user ID for {supabase_user_id}: {e}")
-                    # Fallback to a default user ID - this should be improved
-                    return 1
 
     async def _analyze_request_for_clarification(self, message: str) -> tuple[bool, List[str]]:
         """
@@ -806,7 +719,7 @@ Only ask for clarification if critical information is missing that would prevent
         return needs_clarification, questions[:3]  # Limit to 3 questions max
 
     async def _save_generated_files_to_azure_and_db(
-        self, user_id: str, project_id: str, generation_id: str, generated_files: Dict[str, str]
+        self, user_id: int, project_id: str, generation_id: str, generated_files: Dict[str, str]
     ):
         """Save generated files to Azure File Share and create database records."""
         try:
@@ -815,12 +728,10 @@ Only ask for clarification if critical information is missing that would prevent
                 from app.models.project import CodeGeneration, GenerationStatus
                 from app.services.code_generation.generation.prompt_engineer import GenerationScenario
 
-                # Use Supabase user_id (string) for CodeGeneration record
-                # CodeGeneration.user_id expects VARCHAR (Supabase user ID), not integer
                 generation_record = CodeGeneration(
                     id=generation_id,
                     project_id=project_id,
-                    user_id=user_id,  # Use Supabase user_id (string) directly
+                    user_id=user_id,
                     query=f"Terraform generation via chat - {len(generated_files)} files",
                     scenario=GenerationScenario.NEW_RESOURCE.value,
                     status=GenerationStatus.COMPLETED,
@@ -844,8 +755,9 @@ Only ask for clarification if critical information is missing that would prevent
 
                 if generated_files:
                     # Save all files in one call using the correct method
+                    # Convert integer user_id to string for Azure service
                     save_result = await azure_service.save_generated_files(
-                        user_id=user_id,
+                        user_id=str(user_id),
                         project_id=project_id,
                         generation_id=generation_id,
                         files=generated_files  # This is already a Dict[str, str]

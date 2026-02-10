@@ -2,7 +2,7 @@
 Configuration Health Check Module.
 
 This module provides utilities for checking the health and validity of all
-application configurations, including Supabase, Azure, and feature flags.
+application configurations, including Azure, and feature flags.
 """
 
 import logging
@@ -12,7 +12,6 @@ from enum import Enum
 
 from ..settings import get_settings
 from .azure_validator import validate_azure_configuration, quick_validate_azure_config
-from .supabase_validator import validate_supabase_configuration, quick_validate_supabase_config
 
 
 class HealthStatus(str, Enum):
@@ -63,10 +62,6 @@ class ConfigurationHealthChecker:
             "recommendations": []
         }
 
-        # Check Supabase configuration
-        supabase_health = self._check_supabase_health(settings)
-        health_report["components"]["supabase"] = supabase_health
-
         # Check Azure configuration
         azure_health = self._check_azure_health()
         health_report["components"]["azure"] = azure_health
@@ -91,54 +86,6 @@ class ConfigurationHealthChecker:
         self._log_health_results(health_report)
 
         return health_report
-
-    def _check_supabase_health(self, settings) -> ComponentHealth:
-        """Check Supabase configuration health."""
-        
-        if not settings.SUPABASE_AUTH_ENABLED:
-            return ComponentHealth(
-                name="supabase",
-                status=HealthStatus.DISABLED,
-                message="Supabase authentication is disabled"
-            )
-
-        try:
-            # Use the validator for detailed checking
-            report = validate_supabase_configuration(settings)
-            
-            if report.is_valid:
-                if len(report.warnings) > 0:
-                    return ComponentHealth(
-                        name="supabase",
-                        status=HealthStatus.WARNING,
-                        message=f"Supabase configuration valid with {len(report.warnings)} warnings",
-                        warnings=[w.message for w in report.warnings],
-                        details=report.config_summary
-                    )
-                else:
-                    return ComponentHealth(
-                        name="supabase",
-                        status=HealthStatus.HEALTHY,
-                        message="Supabase configuration is healthy",
-                        details=report.config_summary
-                    )
-            else:
-                return ComponentHealth(
-                    name="supabase",
-                    status=HealthStatus.UNHEALTHY,
-                    message=f"Supabase configuration invalid with {len(report.errors)} errors",
-                    errors=[e.message for e in report.errors],
-                    warnings=[w.message for w in report.warnings] if report.warnings else None,
-                    details=report.config_summary
-                )
-
-        except Exception as e:
-            return ComponentHealth(
-                name="supabase",
-                status=HealthStatus.UNHEALTHY,
-                message=f"Failed to validate Supabase configuration: {str(e)}",
-                errors=[str(e)]
-            )
 
     def _check_azure_health(self) -> ComponentHealth:
         """Check Azure File Share configuration health."""
@@ -199,11 +146,11 @@ class ConfigurationHealthChecker:
             warnings = []
             
             # Check for conflicting authentication methods
-            if settings.SUPABASE_AUTH_ENABLED and settings.ENTRA_AUTH_ENABLED:
-                warnings.append("Both Supabase and Entra ID authentication are enabled")
+            if settings.ENTRA_AUTH_ENABLED:
+                warnings.append("Entra ID authentication is enabled")
             
             # Check if no authentication is enabled
-            if not settings.SUPABASE_AUTH_ENABLED and not settings.ENTRA_AUTH_ENABLED:
+            if not settings.ENTRA_AUTH_ENABLED:
                 warnings.append("No authentication method is enabled")
             
             # Check GitHub integration status
@@ -301,13 +248,6 @@ class ConfigurationHealthChecker:
         recommendations = []
         components = health_report["components"]
 
-        # Supabase recommendations
-        supabase = components.get("supabase")
-        if supabase and supabase.status == HealthStatus.UNHEALTHY:
-            recommendations.append("Fix Supabase configuration errors to enable authentication")
-        elif supabase and supabase.status == HealthStatus.DISABLED:
-            recommendations.append("Enable Supabase authentication by setting SUPABASE_AUTH_ENABLED=true")
-
         # Azure recommendations
         azure = components.get("azure")
         if azure and azure.status == HealthStatus.UNHEALTHY:
@@ -316,10 +256,7 @@ class ConfigurationHealthChecker:
             recommendations.append("Enable Azure File Share by setting AZURE_ENABLED=true")
 
         # Feature flags recommendations
-        if settings.SUPABASE_AUTH_ENABLED and settings.ENTRA_AUTH_ENABLED:
-            recommendations.append("Disable either Supabase or Entra ID authentication to avoid conflicts")
-
-        if not settings.SUPABASE_AUTH_ENABLED and not settings.ENTRA_AUTH_ENABLED:
+        if not settings.ENTRA_AUTH_ENABLED:
             recommendations.append("Enable at least one authentication method")
 
         # Database recommendations
@@ -414,17 +351,8 @@ def validate_startup_configuration() -> Tuple[bool, List[str]]:
         if not settings.DATABASE_URL:
             critical_errors.append("DATABASE_URL is required for application startup")
         
-        # Check authentication configuration
-        if settings.SUPABASE_AUTH_ENABLED:
-            if not settings.SUPABASE_URL:
-                critical_errors.append("SUPABASE_URL is required when Supabase auth is enabled")
-            if not settings.SUPABASE_ANON_KEY:
-                critical_errors.append("SUPABASE_ANON_KEY is required when Supabase auth is enabled")
-            if not settings.SUPABASE_JWT_SECRET:
-                critical_errors.append("SUPABASE_JWT_SECRET is required when Supabase auth is enabled")
-        
         # Check if no authentication is enabled
-        if not settings.SUPABASE_AUTH_ENABLED and not settings.ENTRA_AUTH_ENABLED:
+        if not settings.ENTRA_AUTH_ENABLED:
             critical_errors.append("At least one authentication method must be enabled")
 
         return len(critical_errors) == 0, critical_errors

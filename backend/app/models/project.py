@@ -7,6 +7,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.models.base import Base
+from app.models.user import User
 
 
 class ProjectStatus(str, enum.Enum):
@@ -26,8 +27,7 @@ class Project(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     name = Column(String(100), nullable=False, index=True)
     description = Column(Text, nullable=True)
-    user_id = Column(String(36), nullable=False, index=True)  # Supabase UUID - removed FK constraint for Supabase integration
-    supabase_user_id = Column(String(255), nullable=True, index=True)  # For Supabase user association (deprecated, use user_id)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     status = Column(Enum(ProjectStatus), default=ProjectStatus.ACTIVE, nullable=False, index=True)
     azure_folder_path = Column(String(500), nullable=False)
     
@@ -39,7 +39,7 @@ class Project(Base):
     last_github_sync = Column(DateTime, nullable=True)
 
     # Relationships
-    # Note: user relationship removed since users are managed in Supabase
+    user = relationship("User", back_populates="projects")
     files = relationship("ProjectFile", back_populates="project", cascade="all, delete-orphan")
     generations = relationship("CodeGeneration", back_populates="project", cascade="all, delete-orphan")
     github_sync_records = relationship("GitHubSyncRecord", back_populates="project", cascade="all, delete-orphan")
@@ -174,7 +174,7 @@ class CodeGeneration(Base):
 
     id = Column(String(36), primary_key=True, index=True)  # job_id from generation system
     project_id = Column(String(36), ForeignKey("projects.id"), nullable=False, index=True)
-    user_id = Column(String(36), nullable=False, index=True)  # Supabase UUID - removed FK constraint for Supabase integration
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     query = Column(Text, nullable=False)  # Original user query
     scenario = Column(String(50), nullable=False)  # Generation scenario
     status = Column(Enum(GenerationStatus), default=GenerationStatus.PENDING, nullable=False, index=True)
@@ -188,7 +188,7 @@ class CodeGeneration(Base):
 
     # Relationships
     project = relationship("Project", back_populates="generations")
-    # Note: user relationship removed since users are managed in Supabase
+    user = relationship("User")
     files = relationship("GeneratedFile", back_populates="generation", cascade="all, delete-orphan")
 
     def __init__(self, **kwargs):
