@@ -22,7 +22,7 @@ from app.services.projects.crud_service import ProjectCRUDService, ProjectNotFou
 from app.services.azure_file_service import AzureFileService, SaveResult, FileInfo, ProjectInfo
 from app.services.github_app_service import GitHubAppService, GitHubAppError
 from app.services.chat_service import ChatService
-from app.middleware.supabase_auth import SupabaseJWTValidator
+from app.dependencies.auth import SupabaseJWTValidator
 from logconfig.logger import get_logger
 
 logger = get_logger()

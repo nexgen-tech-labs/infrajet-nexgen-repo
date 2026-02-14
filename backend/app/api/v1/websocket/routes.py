@@ -21,7 +21,7 @@ from fastapi.security import HTTPBearer
 
 from app.services.websocket_manager import websocket_manager
 from app.services.azure_entra_service import AzureEntraService
-from app.middleware.supabase_auth import get_current_user_id_optional
+from app.dependencies.auth import get_current_user_id_optional
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

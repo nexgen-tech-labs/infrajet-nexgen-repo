@@ -292,7 +292,7 @@ class SocketIOManager:
         """
         try:
             # Import here to avoid circular imports
-            from app.middleware.supabase_auth import SupabaseJWTValidator
+            from app.dependencies.auth import SupabaseJWTValidator
 
             validator = SupabaseJWTValidator()
 

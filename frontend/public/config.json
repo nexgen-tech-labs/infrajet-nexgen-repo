@@ -1,7 +1,10 @@
 {
   "GITHUB_APP_SLUG": "infrajet-auth",
   "INFRAJET_API_URL": "http://localhost:8000",
-  "SUPABASE_PROJECT_ID": "",
-  "SUPABASE_PUBLISHABLE_KEY": "",
-  "SUPABASE_URL": ""
+  "FIREBASE_API_KEY": "",
+  "FIREBASE_AUTH_DOMAIN": "",
+  "FIREBASE_PROJECT_ID": "infrajet-nexgen-fb-55585-e9543",
+  "FIREBASE_STORAGE_BUCKET": "",
+  "FIREBASE_MESSAGING_SENDER_ID": "",
+  "FIREBASE_APP_ID": ""
 }

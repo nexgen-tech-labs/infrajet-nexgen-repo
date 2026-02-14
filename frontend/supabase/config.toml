@@ -1,4 +1,0 @@
-project_id = "pzgfjkqdaqjsdgpfklwb"
-
-[functions.github-config]
-verify_jwt = false

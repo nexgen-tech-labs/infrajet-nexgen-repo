@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_async_db
-from app.middleware.supabase_auth import get_current_user_id
+from app.dependencies.auth import get_current_user_id
 from app.services.chat.enhanced_autonomous_chat_service import EnhancedAutonomousChatService
 from app.services.chat_service import ChatService, ChatServiceError, ChatAccessDeniedError, ChatValidationError
 from app.services.websocket_manager import websocket_manager

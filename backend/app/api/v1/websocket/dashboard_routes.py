@@ -26,7 +26,7 @@ from app.services.websocket_manager import websocket_manager
 from app.services.realtime_service import realtime_service
 from app.models.project import Project
 from app.models.user import User
-from app.middleware.supabase_auth import get_current_user_id
+from app.dependencies.auth import get_current_user_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/websocket/dashboard", tags=["websocket-dashboard"])

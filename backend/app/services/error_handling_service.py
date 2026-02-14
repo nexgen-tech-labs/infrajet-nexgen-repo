@@ -40,7 +40,6 @@ from ..exceptions.security_exceptions import (
     is_security_exception_retryable,
     get_security_error_context,
 )
-from ..exceptions.supabase_exceptions import (
     SupabaseError,
     is_retryable_supabase_error,
     get_supabase_error_severity,

@@ -25,7 +25,7 @@ from app.core.azure_entra import (
 from app.core.settings import get_settings
 from app.core.security import create_access_token, create_refresh_token
 from app.db.session import get_db
-from app.middleware.supabase_auth import get_current_user_id
+from app.dependencies.auth import get_current_user_id
 from app.models.user import User, RefreshToken, UserRole
 from app.schemas.token import Token
 from app.schemas.user import User as UserSchema, UserInResponse

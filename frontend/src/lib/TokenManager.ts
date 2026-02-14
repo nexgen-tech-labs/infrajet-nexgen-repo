@@ -1,16 +1,16 @@
-import { supabase } from '@/integrations/supabase/client';
+import { getFirebaseAuth } from './firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { ApiError, ErrorType } from './ApiError';
 
 export interface TokenData {
   access_token: string;
-  refresh_token?: string;
   expires_at?: number;
-  expires_in?: number;
 }
 
 export class TokenManager {
   private static instance: TokenManager;
   private currentToken: TokenData | null = null;
+  private currentUser: User | null = null;
   private refreshPromise: Promise<TokenData> | null = null;
   private refreshThreshold = 5 * 60 * 1000; // 5 minutes before expiry
 
@@ -48,66 +48,31 @@ export class TokenManager {
 
   private async refreshToken(): Promise<TokenData> {
     try {
-      // Try to get current session from Supabase
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const auth = getFirebaseAuth();
+      const user = auth.currentUser;
 
-      if (error) {
+      if (!user) {
         throw new ApiError(
           ErrorType.AUTHENTICATION_ERROR,
-          'Failed to get authentication session',
-          401,
-          undefined,
-          error
-        );
-      }
-
-      if (!session) {
-        throw new ApiError(
-          ErrorType.AUTHENTICATION_ERROR,
-          'No active session found',
+          'No authenticated user found',
           401
         );
       }
 
-      // Check if token is still valid
-      if (this.isSessionValid(session)) {
-        const tokenData: TokenData = {
-          access_token: session.access_token,
-          refresh_token: session.refresh_token || undefined,
-          expires_at: session.expires_at ? session.expires_at * 1000 : undefined,
-          expires_in: session.expires_in || undefined,
-        };
-        return tokenData;
-      }
+      // Get fresh ID token from Firebase
+      // Firebase automatically refreshes the token if needed
+      const idToken = await user.getIdToken(true); // Force refresh
 
-      // Token is expired or expiring soon, try to refresh
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-
-      if (refreshError) {
-        throw new ApiError(
-          ErrorType.AUTHENTICATION_ERROR,
-          'Failed to refresh authentication token',
-          401,
-          undefined,
-          refreshError
-        );
-      }
-
-      if (!refreshData.session) {
-        throw new ApiError(
-          ErrorType.AUTHENTICATION_ERROR,
-          'Token refresh failed - no session returned',
-          401
-        );
-      }
+      // Get token result to check expiration
+      const tokenResult = await user.getIdTokenResult();
+      const expirationTime = new Date(tokenResult.expirationTime).getTime();
 
       const tokenData: TokenData = {
-        access_token: refreshData.session.access_token,
-        refresh_token: refreshData.session.refresh_token || undefined,
-        expires_at: refreshData.session.expires_at ? refreshData.session.expires_at * 1000 : undefined,
-        expires_in: refreshData.session.expires_in || undefined,
+        access_token: idToken,
+        expires_at: expirationTime,
       };
 
+      this.currentUser = user;
       return tokenData;
 
     } catch (error) {
@@ -117,7 +82,7 @@ export class TokenManager {
 
       throw new ApiError(
         ErrorType.AUTHENTICATION_ERROR,
-        'Authentication failed',
+        'Failed to refresh authentication token',
         401,
         undefined,
         error as Error
@@ -136,47 +101,43 @@ export class TokenManager {
     return timeUntilExpiry < this.refreshThreshold;
   }
 
-  private isSessionValid(session: any): boolean {
-    if (!session.expires_at) {
-      return true; // Assume valid if no expiry
-    }
-
-    const now = Date.now();
-    const expiresAt = session.expires_at * 1000; // Convert to milliseconds
-    const timeUntilExpiry = expiresAt - now;
-
-    return timeUntilExpiry > this.refreshThreshold;
-  }
-
   clearToken(): void {
     this.currentToken = null;
+    this.currentUser = null;
     this.refreshPromise = null;
   }
 
   // Set up automatic token refresh listener
   setupAutoRefresh(): () => void {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        switch (event) {
-          case 'SIGNED_IN':
-          case 'TOKEN_REFRESHED':
-            if (session) {
-              this.currentToken = {
-                access_token: session.access_token,
-                refresh_token: session.refresh_token || undefined,
-                expires_at: session.expires_at ? session.expires_at * 1000 : undefined,
-                expires_in: session.expires_in || undefined,
-              };
-            }
-            break;
-          case 'SIGNED_OUT':
-            this.clearToken();
-            break;
-        }
-      }
-    );
+    try {
+      const auth = getFirebaseAuth();
 
-    return () => subscription.unsubscribe();
+      const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          this.currentUser = user;
+          // Get initial token
+          try {
+            const idToken = await user.getIdToken();
+            const tokenResult = await user.getIdTokenResult();
+            const expirationTime = new Date(tokenResult.expirationTime).getTime();
+
+            this.currentToken = {
+              access_token: idToken,
+              expires_at: expirationTime,
+            };
+          } catch (error) {
+            console.error('Error getting initial token:', error);
+          }
+        } else {
+          this.clearToken();
+        }
+      });
+
+      return () => unsubscribe();
+    } catch (error) {
+      console.error('Error setting up auto-refresh:', error);
+      return () => {}; // Return empty cleanup function
+    }
   }
 
   // Get current token without refreshing

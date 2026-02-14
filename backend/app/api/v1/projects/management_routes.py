@@ -14,7 +14,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Path, Body
 from pydantic import BaseModel, Field
 
-from app.middleware.supabase_auth import get_current_user_id
+from app.dependencies.auth import get_current_user_id
 from app.services.project_management_service import (
     ProjectManagementService,
     ProjectManagementError,
@@ -23,7 +23,7 @@ from app.services.project_management_service import (
 )
 from app.services.azure_file_service import AzureFileService
 from app.services.github_app_service import GitHubAppService
-from app.middleware.supabase_auth import SupabaseJWTValidator
+from app.dependencies.auth import SupabaseJWTValidator
 from app.db.session import get_async_db
 from logconfig.logger import get_logger
 

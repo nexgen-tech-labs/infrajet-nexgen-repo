@@ -30,7 +30,7 @@ from app.services.code_generation.best_practices.enforcer import (
     TerraformBestPracticesEnforcer,
 )
 from app.services.code_generation.config.settings import get_code_generation_settings
-from app.middleware.supabase_auth import get_current_user_id, get_current_user_id_optional
+from app.dependencies.auth import get_current_user_id, get_current_user_id_optional
 from app.models.user import User
 
 from .models import (
@@ -123,7 +123,6 @@ async def generate_code(
     """
     try:
         # Import required services and models
-        from app.services.supabase_client_service import get_supabase_client_service
         from app.services.project_management_service import ProjectManagementService
         from app.services.azure_file_service import AzureFileService
         from app.services.github_app_service import GitHubAppService
@@ -133,7 +132,6 @@ async def generate_code(
         )
 
         # Initialize services
-        supabase_service = get_supabase_client_service()
         azure_file_service = AzureFileService()
         github_service = GitHubAppService()
         project_service = ProjectManagementService(
@@ -143,7 +141,7 @@ async def generate_code(
         )
 
         # User ID is already extracted and validated by the Supabase dependency
-        logger.info(f"Validated Supabase user {user_id} for code generation")
+        logger.info(f"Validated user {user_id} for code generation")
 
         # Parse request as project integration request for enhanced features
         if hasattr(request, "project_id") or hasattr(request, "project_name"):
@@ -252,14 +250,13 @@ async def generate_code_with_realtime(
 
     try:
         # Import required services and models
-        from app.services.supabase_client_service import get_supabase_client_service
         from app.schemas.project_integration import (
             ProjectIntegrationRequest,
             create_backward_compatible_response,
         )
 
         # User ID is already extracted and validated by the Supabase dependency
-        logger.info(f"Validated Supabase user {user_id} for real-time code generation")
+        logger.info(f"Validated user {user_id} for real-time code generation")
 
         # Parse request as project integration request for enhanced features
         if hasattr(request, "project_id") or hasattr(request, "project_name"):

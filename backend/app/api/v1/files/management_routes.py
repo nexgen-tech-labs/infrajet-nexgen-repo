@@ -20,7 +20,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.middleware.supabase_auth import get_current_user_id, SupabaseJWTValidator
+from app.dependencies.auth import get_current_user_id, SupabaseJWTValidator
 from app.services.azure_file_service import AzureFileService, FileInfo, SaveResult
 from app.services.project_management_service import (
     ProjectManagementService,

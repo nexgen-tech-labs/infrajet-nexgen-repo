@@ -57,7 +57,6 @@ class Settings(BaseSettings):
     # Feature Flags
     ENTRA_AUTH_ENABLED: bool = False
     GITHUB_INTEGRATION_ENABLED: bool = True
-    SUPABASE_AUTH_ENABLED: bool = False # Supabase is now disabled
     FIREBASE_AUTH_ENABLED: bool = True
 
     # GitHub App Configuration (for repository operations)

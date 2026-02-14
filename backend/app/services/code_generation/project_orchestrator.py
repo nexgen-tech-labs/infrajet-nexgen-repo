@@ -27,7 +27,6 @@ from app.services.code_generation.generation.pipeline import (
 from app.services.code_generation.project_intelligence import (
     AnthropicProjectIntelligence,
 )
-from app.services.supabase_client_service import SupabaseClientError, SupabaseUserNotFoundError, SupabaseConnectionError
 from app.services.projects.crud_service import ProjectCRUDService, ProjectNotFoundError
 from app.services.projects.auth_service import ProjectAuthService
 

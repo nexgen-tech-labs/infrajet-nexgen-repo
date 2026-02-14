@@ -1,13 +1,18 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import {
+  User,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  updateProfile,
+} from 'firebase/auth';
+import { getFirebaseAuth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { tokenManager } from '@/lib/TokenManager';
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -26,69 +31,60 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Set up token manager auto-refresh
-    const cleanupTokenManager = tokenManager.setupAutoRefresh();
+    try {
+      const auth = getFirebaseAuth();
 
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      // Set up token manager auto-refresh
+      const cleanupTokenManager = tokenManager.setupAutoRefresh();
+
+      // Set up auth state listener
+      const unsubscribe = onAuthStateChanged(auth, (user) => {
+        setUser(user);
         setLoading(false);
-      }
-    );
+      });
 
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      return () => {
+        unsubscribe();
+        cleanupTokenManager();
+      };
+    } catch (error) {
+      console.error('Firebase auth initialization error:', error);
       setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-      cleanupTokenManager();
-    };
+    }
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
-      const redirectUrl = `${window.location.origin}/`;
-      
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            full_name: fullName,
-          }
-        }
-      });
+      const auth = getFirebaseAuth();
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
 
-      if (error) {
-        toast({
-          title: "Sign up failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Sign up successful",
-          description: "Please check your email to verify your account.",
+      // Update user profile with full name
+      if (userCredential.user) {
+        await updateProfile(userCredential.user, {
+          displayName: fullName,
         });
       }
 
-      return { error };
+      toast({
+        title: "Sign up successful",
+        description: "Your account has been created successfully.",
+      });
+
+      return { error: null };
     } catch (error: any) {
+      const errorMessage = error.code === 'auth/email-already-in-use'
+        ? 'Email is already in use'
+        : error.code === 'auth/weak-password'
+        ? 'Password should be at least 6 characters'
+        : error.message;
+
       toast({
         title: "Sign up failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
       return { error };
@@ -97,29 +93,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const auth = getFirebaseAuth();
+      await signInWithEmailAndPassword(auth, email, password);
+
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully signed in.",
       });
 
-      if (error) {
-        toast({
-          title: "Sign in failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Welcome back!",
-          description: "You have successfully signed in.",
-        });
-      }
-
-      return { error };
+      return { error: null };
     } catch (error: any) {
+      const errorMessage = error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password'
+        ? 'Invalid email or password'
+        : error.code === 'auth/too-many-requests'
+        ? 'Too many failed attempts. Please try again later.'
+        : error.message;
+
       toast({
         title: "Sign in failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
       return { error };
@@ -128,50 +120,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      // Clear local state first
-      setSession(null);
+      const auth = getFirebaseAuth();
+      await firebaseSignOut(auth);
+
       setUser(null);
-      
-      // Then attempt to sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-      
-      // Don't show error for session_not_found as it means user is already signed out
-      if (error && error.message !== "Session from session_id claim in JWT does not exist") {
-        toast({
-          title: "Sign out failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Signed out",
-          description: "You have been signed out successfully.",
-        });
-      }
+
+      toast({
+        title: "Signed out",
+        description: "You have been signed out successfully.",
+      });
     } catch (error: any) {
-      // Even if there's an error, we still clear the local state
-      setSession(null);
       setUser(null);
-      
-      // Only show error if it's not a session-related issue
-      if (!error.message?.includes("session") && !error.message?.includes("Session")) {
-        toast({
-          title: "Sign out failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Signed out",
-          description: "You have been signed out successfully.",
-        });
-      }
+
+      toast({
+        title: "Sign out failed",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
   const value = {
     user,
-    session,
     signUp,
     signIn,
     signOut,

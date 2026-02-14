@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, desc, select
 
 from app.db.session import get_async_db
-from app.middleware.supabase_auth import get_current_user_id
+from app.dependencies.auth import get_current_user_id
 from app.models.user import User
 from app.models.project import Project
 from app.models.project import CodeGeneration

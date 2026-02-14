@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from app.db.session import get_db
 from app.services.embedding_orchestrator import EmbeddingOrchestrator, RepositoryEmbeddingRequest
-from app.middleware.supabase_auth import get_current_user_id
+from app.dependencies.auth import get_current_user_id
 from app.models.user import User
 from logconfig.logger import get_logger
 

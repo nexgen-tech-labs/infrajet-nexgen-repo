@@ -16,7 +16,7 @@ from fastapi.responses import PlainTextResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.middleware.supabase_auth import get_current_user_id
+from app.dependencies.auth import get_current_user_id
 from app.models.user import User
 from app.models.project import ProjectFile
 from app.api.v1.projects.models import (

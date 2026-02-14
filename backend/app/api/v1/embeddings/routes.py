@@ -11,7 +11,7 @@ from app.db.session import get_db
 from app.services.embedding_service import EmbeddingService
 from app.services.embedding_orchestrator import EmbeddingOrchestrator, RepositoryEmbeddingRequest
 from app.services.monitoring_service import EmbeddingMonitoringService
-from app.middleware.supabase_auth import get_current_user_id
+from app.dependencies.auth import get_current_user_id
 from app.models.user import User
 from logconfig.logger import get_logger
 

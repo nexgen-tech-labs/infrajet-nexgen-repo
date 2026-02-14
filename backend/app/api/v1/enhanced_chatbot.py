@@ -18,7 +18,7 @@ from datetime import datetime
 import uuid
 
 from app.db.session import get_async_db
-from app.middleware.supabase_auth import get_current_user, SupabaseUser
+from app.dependencies.auth import get_current_user, SupabaseUser
 from app.services.chat.enhanced_autonomous_chat_service import EnhancedAutonomousChatService
 from app.services.azure_file_service import get_azure_file_service
 from app.services.websocket_manager import websocket_manager
